@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PHP Chat App with Local Storage</title>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f4f4f4; margin: 0; padding: 0; }
+        #chat-container { width: 100%; max-width: 600px; margin: 50px auto; border: 1px solid #ccc; background-color: #fff; padding: 20px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); }
+        #chat { border: 1px solid #ccc; padding: 10px; height: 300px; overflow-y: auto; margin-bottom: 20px; background-color: #fafafa; }
+        #message { width: calc(100% - 120px); padding: 10px; border: 1px solid #ccc; }
+        #send { width: 100px; padding: 10px; background-color: #28a745; color: #fff; border: none; cursor: pointer; }
+        #send:hover { background-color: #218838; }
+        .chat-message { margin-bottom: 10px; }
+        .chat-timestamp { color: #888; font-size: 0.8em; }
+    </style>
+</head>
+<body>
+    <div id="chat-container">
+        <h1>PHP Chat App</h1>
+        <div id="chat"></div>
+        <input type="text" id="message" placeholder="Type a message">
+        <button id="send">Send</button>
+    </div>
+
+    <script>
+        const chat = document.getElementById('chat');
+        const messageInput = document.getElementById('message');
+        const sendButton = document.getElementById('send');
+
+        // Load chat history from localStorage
+        function loadLocalChat() {
+            const localChat = JSON.parse(localStorage.getItem('chatMessages')) || [];
+            localChat.forEach(item => {
+                displayMessage(item.timestamp, item.message);
+            });
+        }
+
+        // Save message to localStorage
+        function saveMessageLocally(timestamp, message) {
+            const localChat = JSON.parse(localStorage.getItem('chatMessages')) || [];
+            localChat.push({ timestamp, message });
+            localStorage.setItem('chatMessages', JSON.stringify(localChat));
+        }
+
+        // Load chat history from the server
+        function loadChat() {
+            fetch('chat.php')
+                .then(response => response.json())
+                .then(data => {
+                    chat.innerHTML = '';
+                    data.forEach(item => {
+                        displayMessage(item.timestamp, item.message);
+                    });
+                    chat.scrollTop = chat.scrollHeight;  // Scroll to bottom
+                });
+        }
+
+        // Display a message in the chat
+        function displayMessage(timestamp, message) {
+            const chatMessage = document.createElement('div');
+            chatMessage.className = 'chat-message';
+            chatMessage.innerHTML = `<b>[<span class="chat-timestamp">${timestamp}</span>]</b> ${message}`;
+            chat.appendChild(chatMessage);
+        }
+
+        // Send a new message
+        function sendMessage() {
+            const message = messageInput.value;
+            if (message) {
+                const timestamp = new Date().toLocaleString();
+                fetch('chat.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    },
+                    body: `message=${encodeURIComponent(message)}`
+                }).then(() => {
+                    displayMessage(timestamp, message);
+                    saveMessageLocally(timestamp, message);
+                    messageInput.value = '';
+                    chat.scrollTop = chat.scrollHeight;  // Scroll to bottom
+                });
+            }
+        }
+
+        sendButton.addEventListener('click', sendMessage);
+
+        // Load chat history every 3 seconds
+        setInterval(loadChat, 3000);
+
+        // Initial chat load from localStorage and then server
+        loadLocalChat();
+        loadChat();
+    </script>
+</body>
+</html>
